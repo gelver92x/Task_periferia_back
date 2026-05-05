@@ -1,13 +1,18 @@
 import cors from 'cors';
 import express from 'express';
 
+import { env } from '../../shared/config/env';
 import { createTaskRouter } from './routes/task.routes';
 import { errorMiddleware } from './middlewares/error.middleware';
 
 export const createApp = () => {
   const app = express();
 
-  app.use(cors());
+  app.use(
+    cors({
+      origin: env.allowedOrigins,
+    }),
+  );
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/health', (_request, response) => {
