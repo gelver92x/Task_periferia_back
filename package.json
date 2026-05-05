@@ -1,0 +1,43 @@
+{
+  "name": "task-periferia-back",
+  "version": "0.1.0",
+  "description": "Task manager REST API built with Node.js, Express, TypeScript and SQLite.",
+  "main": "dist/adapters/http/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/adapters/http/server.ts",
+    "start": "node dist/adapters/http/server.js",
+    "db:migrate": "tsx src/infrastructure/database/run-migrations.ts",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "tasks",
+    "express",
+    "typescript",
+    "sqlite",
+    "hexagonal-architecture"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.26.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
+
