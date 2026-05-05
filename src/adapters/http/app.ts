@@ -1,6 +1,9 @@
 import cors from 'cors';
 import express from 'express';
 
+import { createTaskRouter } from './routes/task.routes';
+import { errorMiddleware } from './middlewares/error.middleware';
+
 export const createApp = () => {
   const app = express();
 
@@ -10,6 +13,9 @@ export const createApp = () => {
   app.get('/health', (_request, response) => {
     response.status(200).json({ status: 'ok' });
   });
+
+  app.use('/tasks', createTaskRouter());
+  app.use(errorMiddleware);
 
   return app;
 };
