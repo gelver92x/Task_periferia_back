@@ -1,9 +1,8 @@
 import Database from 'better-sqlite3';
-import dotenv from 'dotenv';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-dotenv.config();
+import { env } from '../../shared/config/env';
 
 let connection: Database.Database | null = null;
 
@@ -12,8 +11,7 @@ export const getDatabase = (): Database.Database => {
     return connection;
   }
 
-  const dbPath = process.env.DB_PATH ?? './data/tasks.db';
-  const resolvedPath = path.resolve(process.cwd(), dbPath);
+  const resolvedPath = path.resolve(process.cwd(), env.dbPath);
   mkdirSync(path.dirname(resolvedPath), { recursive: true });
 
   connection = new Database(resolvedPath);
