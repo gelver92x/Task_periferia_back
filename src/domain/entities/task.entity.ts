@@ -1,4 +1,6 @@
+import { TaskDescription } from '../value-objects/task-description.vo';
 import { type TaskStatus } from '../value-objects/task-status.vo';
+import { TaskTitle } from '../value-objects/task-title.vo';
 
 export type TaskSnapshot = {
   id: string;
@@ -21,8 +23,8 @@ export type CreateTaskProps = {
 export class Task {
   private constructor(
     private readonly _id: string,
-    private _title: string,
-    private _description: string,
+    private _title: TaskTitle,
+    private _description: TaskDescription,
     private _status: TaskStatus,
     private readonly _createdAt: Date,
     private _updatedAt: Date,
@@ -33,11 +35,11 @@ export class Task {
   }
 
   get title(): string {
-    return this._title;
+    return this._title.toString();
   }
 
   get description(): string {
-    return this._description;
+    return this._description.toString();
   }
 
   get status(): TaskStatus {
@@ -57,8 +59,8 @@ export class Task {
 
     return new Task(
       props.id,
-      Task.normalizeTitle(props.title),
-      Task.normalizeDescription(props.description),
+      TaskTitle.create(props.title),
+      TaskDescription.create(props.description),
       props.status ?? 'pending',
       props.createdAt ?? now,
       props.updatedAt ?? now,
@@ -68,8 +70,8 @@ export class Task {
   static rehydrate(snapshot: TaskSnapshot): Task {
     return new Task(
       snapshot.id,
-      Task.normalizeTitle(snapshot.title),
-      Task.normalizeDescription(snapshot.description),
+      TaskTitle.create(snapshot.title),
+      TaskDescription.create(snapshot.description),
       snapshot.status,
       snapshot.createdAt,
       snapshot.updatedAt,
@@ -77,12 +79,12 @@ export class Task {
   }
 
   rename(title: string): void {
-    this._title = Task.normalizeTitle(title);
+    this._title = TaskTitle.create(title);
     this.touch();
   }
 
   updateDescription(description?: string): void {
-    this._description = Task.normalizeDescription(description);
+    this._description = TaskDescription.create(description);
     this.touch();
   }
 
@@ -94,8 +96,8 @@ export class Task {
   toSnapshot(): TaskSnapshot {
     return {
       id: this._id,
-      title: this._title,
-      description: this._description,
+      title: this._title.toString(),
+      description: this._description.toString(),
       status: this._status,
       createdAt: new Date(this._createdAt),
       updatedAt: new Date(this._updatedAt),
@@ -104,26 +106,6 @@ export class Task {
 
   private touch(): void {
     this._updatedAt = new Date();
-  }
-
-  private static normalizeTitle(title: string): string {
-    const normalizedTitle = title.trim();
-
-    if (normalizedTitle.length < 3 || normalizedTitle.length > 100) {
-      throw new Error('Task title must be between 3 and 100 characters.');
-    }
-
-    return normalizedTitle;
-  }
-
-  private static normalizeDescription(description = ''): string {
-    const normalizedDescription = description.trim();
-
-    if (normalizedDescription.length > 500) {
-      throw new Error('Task description must be 500 characters or less.');
-    }
-
-    return normalizedDescription;
   }
 }
 
