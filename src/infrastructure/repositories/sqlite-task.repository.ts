@@ -4,6 +4,7 @@ import { Task } from '../../domain/entities/task.entity';
 import {
   type TaskRepository,
   type TaskRepositoryUpdate,
+  type PagedResult,
 } from '../../domain/repositories/task.repository';
 import { isTaskStatus } from '../../domain/value-objects/task-status.vo';
 
@@ -23,8 +24,24 @@ export class SQLiteTaskRepository implements TaskRepository {
     const rows = this.database
       .prepare('SELECT * FROM tasks ORDER BY datetime(created_at) DESC')
       .all() as TaskRow[];
-
     return rows.map((row) => this.toDomain(row));
+  }
+
+  async findPaginated(page: number, limit: number): Promise<PagedResult<Task>> {
+    const offset = (page - 1) * limit;
+    const rows = this.database
+      .prepare('SELECT * FROM tasks ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?')
+      .all(limit, offset) as TaskRow[];
+    const total = (this.database
+      .prepare('SELECT COUNT(*) as count FROM tasks')
+      .get() as { count: number }).count;
+    return {
+      data:    rows.map((row) => this.toDomain(row)),
+      total,
+      page,
+      limit,
+      hasMore: offset + rows.length < total,
+    };
   }
 
   async findById(id: string): Promise<Task | null> {

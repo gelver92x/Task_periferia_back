@@ -9,9 +9,11 @@ type TaskContainer = ReturnType<typeof buildTaskContainer>;
 export class TaskController {
   constructor(private readonly container: TaskContainer) {}
 
-  getAll = async (_request: Request, response: Response): Promise<void> => {
-    const tasks = await this.container.getAllTasksUseCase.execute();
-    response.status(200).json(tasks);
+  getAll = async (request: Request, response: Response): Promise<void> => {
+    const page  = Math.max(1, parseInt(request.query['page']  as string) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(request.query['limit'] as string) || 9));
+    const result = await this.container.getAllTasksUseCase.execute(page, limit);
+    response.status(200).json(result);
   };
 
   getById = async (request: Request, response: Response): Promise<void> => {
