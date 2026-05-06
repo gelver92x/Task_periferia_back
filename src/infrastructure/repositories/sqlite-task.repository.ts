@@ -19,20 +19,40 @@ type TaskRow = {
 export class SQLiteTaskRepository implements TaskRepositoryPort {
   constructor(private readonly database: Database) {}
 
-  async findPaginated(page: number, limit: number): Promise<PagedResult<Task>> {
+  async findPaginated(page: number, limit: number, status?: string): Promise<PagedResult<Task>> {
     const offset = (page - 1) * limit;
-    const rows = this.database
-      .prepare('SELECT * FROM tasks ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?')
-      .all(limit, offset) as TaskRow[];
-    const total = (this.database
-      .prepare('SELECT COUNT(*) as count FROM tasks')
-      .get() as { count: number }).count;
+
+    // Fetch the page (filtered if status provided)
+    const dataQuery = status
+      ? 'SELECT * FROM tasks WHERE status = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?'
+      : 'SELECT * FROM tasks ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?';
+    const dataParams: (string | number)[] = status ? [status, limit, offset] : [limit, offset];
+    const rows = this.database.prepare(dataQuery).all(...dataParams) as TaskRow[];
+
+    // Filtered total (for hasMore / pagination calculation)
+    const filteredTotal = status
+      ? (this.database.prepare('SELECT COUNT(*) as count FROM tasks WHERE status = ?').get(status) as { count: number }).count
+      : (this.database.prepare('SELECT COUNT(*) as count FROM tasks').get() as { count: number }).count;
+
+    // Global stats — always count ALL tasks regardless of the active filter
+    const statsRows = this.database
+      .prepare('SELECT status, COUNT(*) as count FROM tasks GROUP BY status')
+      .all() as { status: string; count: number }[];
+
+    const statsMap = new Map(statsRows.map((r) => [r.status, r.count]));
+    const stats = {
+      pending:    statsMap.get('pending')     ?? 0,
+      inProgress: statsMap.get('in_progress') ?? 0,
+      done:       statsMap.get('done')        ?? 0,
+    };
+
     return {
       data:    rows.map((row) => this.toDomain(row)),
-      total,
+      total:   filteredTotal,
       page,
       limit,
-      hasMore: offset + rows.length < total,
+      hasMore: offset + rows.length < filteredTotal,
+      stats,
     };
   }
 
@@ -91,4 +111,3 @@ export class SQLiteTaskRepository implements TaskRepositoryPort {
     });
   }
 }
-

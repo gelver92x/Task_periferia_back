@@ -105,12 +105,13 @@ http://localhost:3000
 
 ### GET /tasks — Paginación
 
-Acepta query params para controlar la paginación:
+Acepta query params para controlar la paginación y filtrado:
 
 | Param | Tipo | Default | Máximo | Descripción |
 |-------|------|---------|--------|-------------|
 | `page` | `number` | `1` | — | Número de página (1-indexed) |
 | `limit` | `number` | `9` | `50` | Tareas por página |
+| `status` | `string` | — | — | Filtro opcional por estado (`pending`, `in_progress`, `done`) |
 
 **Respuesta exitosa:**
 
@@ -129,7 +130,12 @@ Acepta query params para controlar la paginación:
   "total": 22,
   "page": 1,
   "limit": 9,
-  "hasMore": true
+  "hasMore": true,
+  "stats": {
+    "pending": 22,
+    "inProgress": 5,
+    "done": 10
+  }
 }
 ```
 

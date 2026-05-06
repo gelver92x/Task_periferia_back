@@ -24,15 +24,25 @@ class InMemoryTaskRepository implements TaskRepositoryPort {
     this.tasks.set(task.id, task);
   }
 
-  async findPaginated(page: number, limit: number): Promise<PagedResult<Task>> {
-    const data = Array.from(this.tasks.values()).slice((page - 1) * limit, page * limit);
+  async findPaginated(page: number, limit: number, status?: string): Promise<PagedResult<Task>> {
+    let allData = Array.from(this.tasks.values());
+    if (status) {
+      allData = allData.filter(t => t.status === status);
+    }
+    const data = allData.slice((page - 1) * limit, page * limit);
+
+    const allTasks = Array.from(this.tasks.values());
+    const pending = allTasks.filter(t => t.status === 'pending').length;
+    const inProgress = allTasks.filter(t => t.status === 'in_progress').length;
+    const done = allTasks.filter(t => t.status === 'done').length;
 
     return {
       data,
-      total: this.tasks.size,
+      total: allData.length,
       page,
       limit,
-      hasMore: page * limit < this.tasks.size,
+      hasMore: page * limit < allData.length,
+      stats: { pending, inProgress, done }
     };
   }
 
@@ -72,7 +82,7 @@ describe('task use cases', () => {
 
     const result = await new GetAllTasksUseCase(repository).execute(1, 1);
 
-    assert.deepEqual(Object.keys(result), ['data', 'total', 'page', 'limit', 'hasMore']);
+    assert.deepEqual(Object.keys(result), ['data', 'total', 'page', 'limit', 'hasMore', 'stats']);
     assert.equal(result.data.length, 1);
     assert.equal(result.total, 2);
     assert.equal(result.page, 1);
