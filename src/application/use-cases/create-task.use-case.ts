@@ -1,8 +1,9 @@
-import { randomUUID } from 'node:crypto';
-
-import { Task, type TaskDTO } from '../../domain/entities/task.entity';
-import { type TaskRepository } from '../../domain/repositories/task.repository';
+import { Task } from '../../domain/entities/task.entity';
 import { type TaskStatus } from '../../domain/value-objects/task-status.vo';
+import { type TaskDTO } from '../dtos/task.dto';
+import { toTaskDTO } from '../mappers/task.mapper';
+import { type IdGeneratorPort } from '../ports/outbound/id-generator.port';
+import { type TaskRepositoryPort } from '../ports/outbound/task-repository.port';
 
 export type CreateTaskInput = {
   title: string;
@@ -11,18 +12,21 @@ export type CreateTaskInput = {
 };
 
 export class CreateTaskUseCase {
-  constructor(private readonly taskRepository: TaskRepository) {}
+  constructor(
+    private readonly taskRepository: TaskRepositoryPort,
+    private readonly idGenerator: IdGeneratorPort,
+  ) {}
 
   async execute(input: CreateTaskInput): Promise<TaskDTO> {
     const task = Task.create({
-      id: randomUUID(),
+      id: this.idGenerator.generate(),
       title: input.title,
       description: input.description,
       status: input.status,
     });
 
     const savedTask = await this.taskRepository.save(task);
-    return savedTask.toJSON();
+    return toTaskDTO(savedTask);
   }
 }
 

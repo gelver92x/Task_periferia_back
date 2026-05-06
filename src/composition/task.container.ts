@@ -5,14 +5,16 @@ import { UpdateTaskUseCase } from '../application/use-cases/update-task.use-case
 import { DeleteTaskUseCase } from '../application/use-cases/delete-task.use-case';
 import { getDatabase } from '../infrastructure/database/sqlite.connection';
 import { SQLiteTaskRepository } from '../infrastructure/repositories/sqlite-task.repository';
+import { CryptoIdGenerator } from '../infrastructure/services/crypto-id-generator';
 
 export const buildTaskContainer = () => {
   const taskRepository = new SQLiteTaskRepository(getDatabase());
+  const idGenerator = new CryptoIdGenerator();
 
   return {
     getAllTasksUseCase: new GetAllTasksUseCase(taskRepository),
     getTaskByIdUseCase: new GetTaskByIdUseCase(taskRepository),
-    createTaskUseCase: new CreateTaskUseCase(taskRepository),
+    createTaskUseCase: new CreateTaskUseCase(taskRepository, idGenerator),
     updateTaskUseCase: new UpdateTaskUseCase(taskRepository),
     deleteTaskUseCase: new DeleteTaskUseCase(taskRepository),
   };

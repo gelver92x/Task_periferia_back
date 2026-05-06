@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { createTaskSchema } from '../../../application/dtos/create-task.dto';
-import { updateTaskSchema } from '../../../application/dtos/update-task.dto';
 import { buildTaskContainer } from '../../../composition/task.container';
 import { TaskController } from '../controllers/task.controller';
 import { asyncHandler } from '../middlewares/async-handler.middleware';
 import { validate } from '../middlewares/validate.middleware';
+import { createTaskSchema, updateTaskSchema } from '../schemas/task.schemas';
 
 const idParamsSchema = z.object({
   id: z.string().trim().min(1),

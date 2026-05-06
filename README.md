@@ -70,6 +70,7 @@ http://localhost:3000
 | `npm start` | Inicia el servidor compilado |
 | `npm run build` | Compila TypeScript a `dist/` |
 | `npm run db:migrate` | Ejecuta las migraciones SQL |
+| `npm test` | Ejecuta tests de casos de uso y contrato HTTP |
 | `npm run lint` | Verifica el estilo de código con ESLint |
 
 ---
@@ -215,47 +216,51 @@ infrastructure   →  application / domain
 domain           →  nada externo
 ```
 
-La regla verificable: el directorio `src/domain/` no tiene ninguna importación de Express, SQLite, Zod ni ninguna librería externa.
+La regla verificable: el directorio `src/domain/` no tiene ninguna importación de Express, SQLite, Zod, Node APIs ni ninguna librería externa.
 
 ### Las Cuatro Capas
 
 **1. Domain** (`src/domain/`)
 Contiene las reglas de negocio puras. No depende de ninguna librería externa.
 - `Task` — entidad de dominio con métodos `create()`, `rehydrate()`, `rename()`, `changeStatus()`, `touch()`.
-- `TaskRepository` — interfaz (puerto outbound) que define qué operaciones necesita la aplicación, sin indicar cómo se implementan.
 - `TaskStatus` — value object que garantiza que solo se usen los tres estados válidos.
 
 **2. Application** (`src/application/`)
 Contiene los casos de uso. Orquesta el dominio usando los puertos, sin saber qué los implementa.
 - `GetAllTasksUseCase` — obtiene tareas paginadas del repositorio.
-- `GetTaskByIdUseCase` — obtiene una tarea por ID, lanza `AppError(404)` si no existe.
-- `CreateTaskUseCase` — valida el DTO, crea la entidad `Task` y la persiste.
-- `UpdateTaskUseCase` — busca la tarea, aplica los cambios en la entidad y persiste.
+- `GetTaskByIdUseCase` — obtiene una tarea por ID, lanza `NotFoundError` si no existe.
+- `CreateTaskUseCase` — crea la entidad `Task` usando un puerto de generación de ID y la persiste.
+- `UpdateTaskUseCase` — busca la tarea, aplica los cambios en la entidad y persiste con el repositorio.
 - `DeleteTaskUseCase` — elimina la tarea verificando existencia previa.
-- `AppError` — error controlado que transporta el código HTTP hasta el middleware de errores.
+- `TaskRepositoryPort` e `IdGeneratorPort` — puertos outbound que abstraen persistencia y generación de identificadores.
+- `ApplicationError` — errores semánticos de aplicación, sin códigos HTTP.
 
 **3. Infrastructure** (`src/infrastructure/`)
-Implementa los puertos definidos en el dominio.
-- `SQLiteTaskRepository` — implementa `TaskRepository` usando `better-sqlite3`. Traduce filas SQL a entidades de dominio y viceversa. Es el único lugar donde existe SQL en el proyecto.
+Implementa los puertos definidos en la aplicación.
+- `SQLiteTaskRepository` — implementa `TaskRepositoryPort` usando `better-sqlite3`. Traduce filas SQL a entidades de dominio y viceversa. Es el único lugar donde existe SQL en el proyecto.
+- `CryptoIdGenerator` — implementa `IdGeneratorPort` usando `randomUUID`.
 - `sqlite.connection.ts` — crea y configura la conexión a la base de datos SQLite.
 
 **4. Adapters** (`src/adapters/http/`)
 Traducen entre el protocolo HTTP y los tipos de la aplicación.
 - `TaskController` — recibe `req`/`res` de Express, extrae los datos, llama al caso de uso correspondiente y formatea la respuesta HTTP.
+- `task.schemas.ts` — define los schemas Zod de entrada HTTP.
 - `validate.middleware.ts` — valida el body con un Zod schema antes de que llegue al controller. Retorna `422` con los errores de campo si la validación falla.
-- `error.middleware.ts` — captura todos los errores al final del stack. Distingue entre `AppError` (errores controlados) y errores inesperados (500).
+- `error.middleware.ts` — captura todos los errores al final del stack. Traduce errores de aplicación a HTTP y mantiene el JSON estandarizado.
 - `task.routes.ts` — define las rutas Express y las conecta con los middlewares y el controller.
 
 **5. Composition Root** (`src/composition/task.container.ts`)
-Instancia los repositorios concretos y los inyecta en los casos de uso. Es el único lugar donde se conectan las capas.
+Instancia repositorios, servicios concretos y casos de uso. Es el único lugar donde se conectan las capas.
 
 ```typescript
-export function buildTaskContainer(db: Database) {
-  const taskRepository = new SQLiteTaskRepository(db);
+export function buildTaskContainer() {
+  const taskRepository = new SQLiteTaskRepository(getDatabase());
+  const idGenerator = new CryptoIdGenerator();
+
   return {
     getAllTasksUseCase:    new GetAllTasksUseCase(taskRepository),
     getTaskByIdUseCase:   new GetTaskByIdUseCase(taskRepository),
-    createTaskUseCase:    new CreateTaskUseCase(taskRepository),
+    createTaskUseCase:    new CreateTaskUseCase(taskRepository, idGenerator),
     updateTaskUseCase:    new UpdateTaskUseCase(taskRepository),
     deleteTaskUseCase:    new DeleteTaskUseCase(taskRepository),
   };
@@ -274,18 +279,23 @@ Task_periferia_back/
 │   │   │   └── task.entity.ts           # Clase Task con factory methods y métodos de dominio
 │   │   ├── value-objects/
 │   │   │   └── task-status.vo.ts        # Guard de TypeScript para TaskStatus válido
-│   │   └── repositories/
-│   │       └── task.repository.ts       # Interfaz TaskRepository + tipo PagedResult<T>
 │   │
 │   ├── application/                     # Casos de uso — orquesta dominio sin conocer infraestructura
 │   │   ├── dtos/
 │   │   │   ├── create-task.dto.ts       # Tipo CreateTaskDTO
-│   │   │   └── update-task.dto.ts       # Tipo UpdateTaskDTO
+│   │   │   ├── update-task.dto.ts       # Tipo UpdateTaskDTO
+│   │   │   └── task.dto.ts              # Shape de respuesta que consume el frontend
 │   │   ├── errors/
-│   │   │   └── app.error.ts             # AppError(message, statusCode) — error controlado
+│   │   │   └── app-error.ts             # Errores semánticos de aplicación
+│   │   ├── mappers/
+│   │   │   └── task.mapper.ts           # Convierte entidad Task al contrato JSON público
+│   │   ├── ports/
+│   │   │   └── outbound/
+│   │   │       ├── id-generator.port.ts
+│   │   │       └── task-repository.port.ts
 │   │   └── use-cases/
 │   │       ├── get-all-tasks.use-case.ts    # Retorna PagedResult<TaskDTO>
-│   │       ├── get-task-by-id.use-case.ts  # Lanza AppError(404) si no existe
+│   │       ├── get-task-by-id.use-case.ts  # Lanza NotFoundError si no existe
 │   │       ├── create-task.use-case.ts     # Genera id y createdAt en el dominio
 │   │       ├── update-task.use-case.ts     # Aplica cambios parciales en la entidad
 │   │       └── delete-task.use-case.ts     # Verifica existencia antes de eliminar
@@ -295,8 +305,10 @@ Task_periferia_back/
 │   │   │   ├── sqlite.connection.ts     # Crea la instancia de better-sqlite3
 │   │   │   └── migrations/
 │   │   │       └── 001_create_tasks.sql # DDL de la tabla tasks
-│   │   └── repositories/
-│   │       └── sqlite-task.repository.ts # Implementa TaskRepository con SQL LIMIT/OFFSET
+│   │   ├── repositories/
+│   │   │   └── sqlite-task.repository.ts # Implementa TaskRepositoryPort con SQL LIMIT/OFFSET
+│   │   └── services/
+│   │       └── crypto-id-generator.ts    # Implementa IdGeneratorPort con randomUUID
 │   │
 │   ├── adapters/                        # Frontera HTTP — traduce Request/Response a tipos de app
 │   │   └── http/
@@ -306,8 +318,10 @@ Task_periferia_back/
 │   │       │   └── task.routes.ts       # Define las 6 rutas con sus middlewares
 │   │       ├── controllers/
 │   │       │   └── task.controller.ts   # Recibe req/res, delega al caso de uso
+│   │       ├── schemas/
+│   │       │   └── task.schemas.ts      # Schemas Zod de entrada HTTP
 │   │       └── middlewares/
-│   │           ├── error.middleware.ts  # Captura AppError y errores inesperados → JSON estandarizado
+│   │           ├── error.middleware.ts  # Captura errores y responde JSON estandarizado
 │   │           └── validate.middleware.ts # Valida body con Zod, retorna 422 si falla
 │   │
 │   └── composition/

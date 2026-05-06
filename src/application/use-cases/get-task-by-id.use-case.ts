@@ -1,9 +1,10 @@
-import { type TaskDTO } from '../../domain/entities/task.entity';
-import { type TaskRepository } from '../../domain/repositories/task.repository';
+import { type TaskDTO } from '../dtos/task.dto';
 import { NotFoundError } from '../errors/app-error';
+import { toTaskDTO } from '../mappers/task.mapper';
+import { type TaskRepositoryPort } from '../ports/outbound/task-repository.port';
 
 export class GetTaskByIdUseCase {
-  constructor(private readonly taskRepository: TaskRepository) {}
+  constructor(private readonly taskRepository: TaskRepositoryPort) {}
 
   async execute(id: string): Promise<TaskDTO> {
     const task = await this.taskRepository.findById(id);
@@ -12,7 +13,7 @@ export class GetTaskByIdUseCase {
       throw new NotFoundError('Task not found');
     }
 
-    return task.toJSON();
+    return toTaskDTO(task);
   }
 }
 

@@ -1,12 +1,8 @@
-import { z } from 'zod';
+import { type TaskStatus } from '../../domain/value-objects/task-status.vo';
 
-import { TASK_STATUSES } from '../../domain/value-objects/task-status.vo';
-
-export const createTaskSchema = z.object({
-  title: z.string().trim().min(3).max(100),
-  description: z.string().trim().max(500).optional().default(''),
-  status: z.enum(TASK_STATUSES).optional().default('pending'),
-});
-
-export type CreateTaskDTO = z.infer<typeof createTaskSchema>;
+export type CreateTaskDTO = {
+  title: string;
+  description?: string;
+  status?: TaskStatus;
+};
 

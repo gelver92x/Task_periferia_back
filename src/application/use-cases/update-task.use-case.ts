@@ -1,7 +1,8 @@
-import { type TaskDTO } from '../../domain/entities/task.entity';
-import { type TaskRepository } from '../../domain/repositories/task.repository';
 import { type TaskStatus } from '../../domain/value-objects/task-status.vo';
+import { type TaskDTO } from '../dtos/task.dto';
 import { NotFoundError } from '../errors/app-error';
+import { toTaskDTO } from '../mappers/task.mapper';
+import { type TaskRepositoryPort } from '../ports/outbound/task-repository.port';
 
 export type UpdateTaskInput = {
   title?: string;
@@ -10,16 +11,30 @@ export type UpdateTaskInput = {
 };
 
 export class UpdateTaskUseCase {
-  constructor(private readonly taskRepository: TaskRepository) {}
+  constructor(private readonly taskRepository: TaskRepositoryPort) {}
 
   async execute(id: string, input: UpdateTaskInput): Promise<TaskDTO> {
-    const updatedTask = await this.taskRepository.update(id, input);
+    const task = await this.taskRepository.findById(id);
 
-    if (!updatedTask) {
+    if (!task) {
       throw new NotFoundError('Task not found');
     }
 
-    return updatedTask.toJSON();
+    if (input.title !== undefined) {
+      task.rename(input.title);
+    }
+
+    if (input.description !== undefined) {
+      task.updateDescription(input.description);
+    }
+
+    if (input.status !== undefined) {
+      task.changeStatus(input.status);
+    }
+
+    const updatedTask = await this.taskRepository.save(task);
+
+    return toTaskDTO(updatedTask);
   }
 }
 

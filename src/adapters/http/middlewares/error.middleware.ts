@@ -1,6 +1,10 @@
 import { type ErrorRequestHandler } from 'express';
 
-import { AppError } from '../../../application/errors/app-error';
+import {
+  ApplicationError,
+  NotFoundError,
+  ValidationError,
+} from '../../../application/errors/app-error';
 
 type HttpParseError = SyntaxError & {
   status?: number;
@@ -18,10 +22,12 @@ export const errorMiddleware: ErrorRequestHandler = (error, _request, response, 
     return;
   }
 
-  if (error instanceof AppError) {
-    response.status(error.statusCode).json({
+  if (error instanceof ApplicationError) {
+    const statusCode = getStatusCode(error);
+
+    response.status(statusCode).json({
       error: true,
-      status: error.statusCode,
+      status: statusCode,
       message: error.message,
       timestamp: new Date().toISOString(),
       ...(error.details ? { details: error.details } : {}),
@@ -43,4 +49,16 @@ const isJsonParseError = (error: unknown): error is HttpParseError =>
   error !== null &&
   (error as HttpParseError).status === 400 &&
   (error as HttpParseError).type === 'entity.parse.failed';
+
+const getStatusCode = (error: ApplicationError): number => {
+  if (error instanceof NotFoundError) {
+    return 404;
+  }
+
+  if (error instanceof ValidationError) {
+    return 422;
+  }
+
+  return 500;
+};
 

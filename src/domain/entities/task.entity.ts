@@ -18,15 +18,6 @@ export type CreateTaskProps = {
   updatedAt?: Date;
 };
 
-export type TaskDTO = {
-  id: string;
-  title: string;
-  description: string;
-  status: TaskStatus;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export class Task {
   private constructor(
     private readonly _id: string,
@@ -108,17 +99,6 @@ export class Task {
       status: this._status,
       createdAt: new Date(this._createdAt),
       updatedAt: new Date(this._updatedAt),
-    };
-  }
-
-  toJSON(): TaskDTO {
-    return {
-      id: this._id,
-      title: this._title,
-      description: this._description,
-      status: this._status,
-      createdAt: this._createdAt.toISOString(),
-      updatedAt: this._updatedAt.toISOString(),
     };
   }
 

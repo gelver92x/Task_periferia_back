@@ -2,10 +2,9 @@ import { type Database } from 'better-sqlite3';
 
 import { Task } from '../../domain/entities/task.entity';
 import {
-  type TaskRepository,
-  type TaskRepositoryUpdate,
   type PagedResult,
-} from '../../domain/repositories/task.repository';
+  type TaskRepositoryPort,
+} from '../../application/ports/outbound/task-repository.port';
 import { isTaskStatus } from '../../domain/value-objects/task-status.vo';
 
 type TaskRow = {
@@ -17,15 +16,8 @@ type TaskRow = {
   updated_at: string;
 };
 
-export class SQLiteTaskRepository implements TaskRepository {
+export class SQLiteTaskRepository implements TaskRepositoryPort {
   constructor(private readonly database: Database) {}
-
-  async findAll(): Promise<Task[]> {
-    const rows = this.database
-      .prepare('SELECT * FROM tasks ORDER BY datetime(created_at) DESC')
-      .all() as TaskRow[];
-    return rows.map((row) => this.toDomain(row));
-  }
 
   async findPaginated(page: number, limit: number): Promise<PagedResult<Task>> {
     const offset = (page - 1) * limit;
@@ -60,6 +52,11 @@ export class SQLiteTaskRepository implements TaskRepository {
         `
         INSERT INTO tasks (id, title, description, status, created_at, updated_at)
         VALUES (@id, @title, @description, @status, @createdAt, @updatedAt)
+        ON CONFLICT(id) DO UPDATE SET
+          title = excluded.title,
+          description = excluded.description,
+          status = excluded.status,
+          updated_at = excluded.updated_at
       `,
       )
       .run({
@@ -72,49 +69,6 @@ export class SQLiteTaskRepository implements TaskRepository {
       });
 
     return task;
-  }
-
-  async update(id: string, data: TaskRepositoryUpdate): Promise<Task | null> {
-    const currentTask = await this.findById(id);
-
-    if (!currentTask) {
-      return null;
-    }
-
-    if (data.title !== undefined) {
-      currentTask.rename(data.title);
-    }
-
-    if (data.description !== undefined) {
-      currentTask.updateDescription(data.description);
-    }
-
-    if (data.status !== undefined) {
-      currentTask.changeStatus(data.status);
-    }
-
-    const snapshot = currentTask.toSnapshot();
-
-    this.database
-      .prepare(
-        `
-        UPDATE tasks
-        SET title = @title,
-            description = @description,
-            status = @status,
-            updated_at = @updatedAt
-        WHERE id = @id
-      `,
-      )
-      .run({
-        id,
-        title: snapshot.title,
-        description: snapshot.description,
-        status: snapshot.status,
-        updatedAt: snapshot.updatedAt.toISOString(),
-      });
-
-    return currentTask;
   }
 
   async delete(id: string): Promise<boolean> {
