@@ -8,13 +8,16 @@ API REST para la gestión de tareas. Construida con **Node.js**, **Express**, **
 
 1. [Requisitos](#requisitos)
 2. [Instalación](#instalación)
-3. [Variables de Entorno](#variables-de-entorno)
-4. [Scripts](#scripts)
-5. [Endpoints](#endpoints)
-6. [Modelo de Datos](#modelo-de-datos)
-7. [Códigos de Estado HTTP](#códigos-de-estado-http)
-8. [Arquitectura](#arquitectura)
-9. [Estructura de Carpetas](#estructura-de-carpetas)
+3. [Stack](#stack)
+4. [Variables de Entorno](#variables-de-entorno)
+5. [Scripts](#scripts)
+6. [Endpoints](#endpoints)
+7. [Modelo de Datos](#modelo-de-datos)
+8. [Códigos de Estado HTTP](#códigos-de-estado-http)
+9. [Arquitectura](#arquitectura)
+10. [Estructura de Carpetas](#estructura-de-carpetas)
+11. [Pruebas](#pruebas)
+12. [Dependencias](#dependencias)
 
 ---
 
@@ -22,6 +25,20 @@ API REST para la gestión de tareas. Construida con **Node.js**, **Express**, **
 
 - **Node.js 20+ LTS**
 - **npm 9+**
+
+---
+
+## Stack
+
+| Tecnología      | Versión          |
+|-----------------|------------------|
+| Node.js         | 20+ LTS          |
+| Express         | 4.x              |
+| TypeScript      | 5.x              |
+| better-sqlite3  | 9.x              |
+| Zod             | 3.x              |
+| tsx             | 4.x              |
+| ESLint          | 9.x              |
 
 ---
 
@@ -54,24 +71,24 @@ http://localhost:3000
 
 ## Variables de Entorno
 
-| Variable | Valor por defecto | Descripción |
-|----------|------------------|-------------|
-| `PORT` | `3000` | Puerto del servidor HTTP |
-| `DB_PATH` | `./data/tasks.db` | Ruta al archivo SQLite |
-| `ALLOWED_ORIGINS` | `http://localhost:4200` | Orígenes CORS permitidos |
+| Variable           | Valor por defecto        | Descripción                     |
+|--------------------|--------------------------|----------------------------------|
+| `PORT`             | `3000`                   | Puerto del servidor HTTP         |
+| `DB_PATH`          | `./data/tasks.db`        | Ruta al archivo SQLite           |
+| `ALLOWED_ORIGINS`  | `http://localhost:4200`  | Orígenes CORS permitidos         |
 
 ---
 
 ## Scripts
 
-| Script | Descripción |
-|--------|-------------|
-| `npm run dev` | Servidor de desarrollo con recarga automática (`tsx watch`) |
-| `npm start` | Inicia el servidor compilado |
-| `npm run build` | Compila TypeScript a `dist/` |
-| `npm run db:migrate` | Ejecuta las migraciones SQL |
-| `npm test` | Ejecuta tests de casos de uso y contrato HTTP |
-| `npm run lint` | Verifica el estilo de código con ESLint |
+| Script               | Descripción                                            |
+|----------------------|--------------------------------------------------------|
+| `npm run dev`        | Servidor de desarrollo con recarga automática (`tsx watch`) |
+| `npm start`          | Inicia el servidor compilado desde `dist/`             |
+| `npm run build`      | Compila TypeScript a `dist/`                           |
+| `npm run db:migrate` | Ejecuta las migraciones SQL                            |
+| `npm test`           | Ejecuta tests de casos de uso y contrato HTTP          |
+| `npm run lint`       | Verifica el estilo de código con ESLint                |
 
 ---
 
@@ -336,3 +353,46 @@ Task_periferia_back/
 ├── tsconfig.json
 └── README.md
 ```
+
+---
+
+## Pruebas
+
+Las pruebas cubren las fronteras de mayor riesgo:
+
+- **Dominio**: entidad `Task` — factory methods, validaciones y métodos de comportamiento.
+- **Aplicación**: casos de uso con repositorio falso — sin Express, sin SQLite.
+- **Adapters HTTP**: contrato de endpoints — códigos de estado y formato de respuesta.
+
+```bash
+npm test
+```
+
+---
+
+## Dependencias
+
+### Producción
+
+| Paquete           | Versión  |
+|-------------------|----------|
+| `express`         | ^4.x     |
+| `better-sqlite3`  | ^9.x     |
+| `zod`             | ^3.x     |
+| `cors`            | ^2.x     |
+
+### Desarrollo
+
+| Paquete           | Versión  |
+|-------------------|----------|
+| `typescript`      | ^5.x     |
+| `tsx`             | ^4.x     |
+| `eslint`          | ^9.x     |
+| `@types/express`  | ^4.x     |
+| `@types/node`     | ^20.x    |
+
+---
+
+## Licencia
+
+Uso privado — prueba técnica.
